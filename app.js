@@ -1,4 +1,6 @@
 //jshint esversion:6
+import dotenv from 'dotenv';
+dotenv.config();
 import express from 'express';
 import bodyParser from 'body-parser';
 import mongoose from 'mongoose';
@@ -12,6 +14,8 @@ app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
+console.log(process.env.API_KEY);
+
 // mongoose.connect('mongodb://127.0.0.1:27017/userDB', { useNewUrlParser: true, useUnifiedTopology: true });
 mongoose.connect('mongodb://127.0.0.1:27017/userDB');
 
@@ -20,8 +24,7 @@ const userSchema = new mongoose.Schema({
   password: String,
 });
 
-const secret = 'Thisisourlittlesecret.';
-userSchema.plugin(encrypt, { secret: secret, encryptedFields: ['password'] });
+userSchema.plugin(encrypt, { secret: process.env.SECRET, encryptedFields: ['password'] });
 
 const User = new mongoose.model('User', userSchema);
 
