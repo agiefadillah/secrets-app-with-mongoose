@@ -5,7 +5,11 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import mongoose from 'mongoose';
 import punycode from 'punycode';
-import encrypt from 'mongoose-encryption';
+// import encrypt from 'mongoose-encryption';
+import md5 from 'md5';
+import bcrypt from 'bcrypt';
+
+const saltRounds = 10;
 
 const app = express();
 const port = 3000;
@@ -24,7 +28,7 @@ const userSchema = new mongoose.Schema({
   password: String,
 });
 
-userSchema.plugin(encrypt, { secret: process.env.SECRET, encryptedFields: ['password'] });
+// userSchema.plugin(encrypt, { secret: process.env.SECRET, encryptedFields: ['password'] });
 
 const User = new mongoose.model('User', userSchema);
 
@@ -45,22 +49,27 @@ app.get('/register', (req, res) => {
 });
 
 app.post('/register', async (req, res) => {
-  const newUser = new User({
-    email: req.body.username,
-    password: req.body.password,
-  });
+  bcrypt.hash(req.body.password, saltRounds, async function (err, hash) {
+    const newUser = new User({
+      email: req.body.username,
+      // password: req.body.password,
+      // password: md5(req.body.password),
+      password: hash,
+    });
 
-  try {
-    await newUser.save();
-    res.render('secrets');
-  } catch (err) {
-    console.error(err);
-  }
+    try {
+      await newUser.save();
+      res.render('secrets');
+    } catch (err) {
+      console.error(err);
+    }
+  });
 });
 
 app.post('/login', async (req, res) => {
   const username = req.body.username;
   const password = req.body.password;
+  // const password = md5(req.body.password);
 
   // User.findOne({ email: username }, function (err, foundUser) {
   //   if (err) {
@@ -74,15 +83,34 @@ app.post('/login', async (req, res) => {
   //   }
   // });
 
+  // try {
+  //   const foundUser = await User.findOne({ email: username });
+
+  //   if (foundUser && foundUser.password === password) {
+  //     res.render('secrets');
+  //   } else {
+  //     res.render('login');
+  //   }
+  // } catch (err) {
+  //   console.error(err);
+  // }
+
   try {
     const foundUser = await User.findOne({ email: username });
 
-    if (foundUser && foundUser.password === password) {
-      res.render('secrets');
+    if (foundUser) {
+      bcrypt.compare(password, foundUser.password, function (err, result) {
+        if (result) {
+          res.render('secrets');
+        } else {
+          res.render('login');
+        }
+      });
     } else {
       res.render('login');
     }
   } catch (err) {
     console.error(err);
+    res.render('login');
   }
 });
